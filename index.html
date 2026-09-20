@@ -159,8 +159,8 @@ input{font:inherit}
 
 /* The live needle must sit exactly under the finger. It carried a
    `transition: left .06s` before, which made it chase the thumb one frame and
-   a half behind - that is the whole of the lag. No transition here; moves are
-   coalesced to one paint per frame in JS instead. */
+   a half behind - that was the whole of the lag. No transition here: the
+   position is written straight from the pointer handler. */
 .needle{
   position:absolute;top:0;bottom:0;left:-1px;width:2px;
   background:var(--needle);pointer-events:none;
