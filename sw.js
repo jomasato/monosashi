@@ -4,7 +4,7 @@
  * between a player and the dial - not even for a revalidation that would stall
  * for the length of an airline DNS timeout. The cost is that a new build only
  * lands when CACHE_VERSION changes below, so bump it on every deploy. */
-var CACHE_VERSION = "monosashi-v1";
+var CACHE_VERSION = "monosashi-v2";
 
 var ASSETS = [
   "./",

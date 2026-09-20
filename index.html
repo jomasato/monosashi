@@ -157,15 +157,25 @@ input{font:inherit}
 .wedge b.b4{opacity:.30}
 .wedge .mid{position:absolute;top:0;bottom:0;width:2px;background:var(--truth);opacity:.85}
 
-.needle{position:absolute;top:0;bottom:0;width:2px;background:var(--needle);pointer-events:none;
-  transition:left .06s linear}
-.needle::after{
-  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:30px;height:30px;border-radius:50%;
-  background:var(--needle);box-shadow:0 2px 10px rgba(0,0,0,.35);
+/* The live needle must sit exactly under the finger. It carried a
+   `transition: left .06s` before, which made it chase the thumb one frame and
+   a half behind - that is the whole of the lag. No transition here; moves are
+   coalesced to one paint per frame in JS instead. */
+.needle{
+  position:absolute;top:0;bottom:0;left:-1px;width:2px;
+  background:var(--needle);pointer-events:none;
+  will-change:left;
 }
-.needle.ghost{background:var(--p,var(--needle));transition:none}
-.needle.ghost::after{width:17px;height:17px;background:var(--p,var(--needle))}
+.needle::after{
+  content:"";position:absolute;left:50%;top:50%;
+  width:30px;height:30px;border-radius:50%;
+  background:var(--needle);box-shadow:0 2px 8px rgba(0,0,0,.32);
+  transform:translate(-50%,-50%);
+  transition:transform .11s ease;
+}
+.track.grab .needle::after{transform:translate(-50%,-50%) scale(1.16)}  /* swells under the thumb */
+.needle.ghost{background:var(--p,var(--needle));will-change:auto}
+.needle.ghost::after{width:17px;height:17px;background:var(--p,var(--needle));transition:none}
 /* a pill in the player's own colour: readable over the green bands, which
    plain text on the wash was not */
 .needle .tag{
@@ -613,26 +623,51 @@ function buildScale(host, opt){
     nd.className = "needle";
     track.appendChild(nd);
 
+    var ro = host.querySelectorAll(".readout span");
+    var rect = null, shown = -1;
+
+    /* Painted synchronously with the pointer event on purpose. Deferring to
+       requestAnimationFrame would be marginally cheaper, but if frames ever
+       stall the needle you can see and the value that gets committed drift
+       apart - and this game is decided by exactly that value.
+       Percentage positioning also means no measuring, so it is correct even
+       before the screen has been laid out. */
     function put(v){
       api.value = Math.max(0, Math.min(100, v));
       nd.style.left = "calc(" + api.value + "% - 1px)";
-      var ro = host.querySelectorAll(".readout span");
-      ro[0].textContent = "左から " + Math.round(api.value);
-      ro[1].textContent = "右から " + Math.round(100 - api.value);
+      var n = Math.round(api.value);
+      if (n !== shown){                  /* text only when the number changes */
+        shown = n;
+        ro[0].textContent = "左から " + n;
+        ro[1].textContent = "右から " + (100 - n);
+      }
     }
     function fromX(x){
-      var r = track.getBoundingClientRect();
+      var r = rect || (rect = track.getBoundingClientRect());
       put(((x - r.left) / r.width) * 100);
     }
     var dragging = false;
     track.addEventListener("pointerdown", function(e){
       dragging = true;
+      rect = track.getBoundingClientRect();   /* measured once, not per move */
+      track.classList.add("grab");
       try{ track.setPointerCapture(e.pointerId); }catch(err){}
       fromX(e.clientX);
     });
-    track.addEventListener("pointermove", function(e){ if (dragging) fromX(e.clientX); });
-    track.addEventListener("pointerup", function(){ dragging = false; });
-    track.addEventListener("pointercancel", function(){ dragging = false; });
+    track.addEventListener("pointermove", function(e){
+      if (!dragging) return;
+      /* on a fast flick the browser batches several positions into one event;
+         the last one is where the finger actually is */
+      if (e.getCoalescedEvents){
+        var cs = e.getCoalescedEvents();
+        if (cs.length){ fromX(cs[cs.length - 1].clientX); return; }
+      }
+      fromX(e.clientX);
+    });
+    function letGo(){ dragging = false; rect = null; track.classList.remove("grab"); }
+    track.addEventListener("pointerup", letGo);
+    track.addEventListener("pointercancel", letGo);
+    window.addEventListener("resize", function(){ rect = null; put(api.value); });
     track.setAttribute("tabindex", "0");
     track.setAttribute("role", "slider");
     track.setAttribute("aria-label", opt.pair[0] + " から " + opt.pair[1]);
@@ -776,10 +811,12 @@ function toGuess(){
   $("guess-hint").textContent = G.order.length > 1
     ? "針をことばの位置まで動かす（" + (G.at + 1) + " / " + G.order.length + "人目）"
     : "針をことばの位置まで動かす";
-  dial = buildScale($("guess-scale"), {pair: pair(), live: true, value: 50});
   G.stage = "guess";
   persist();
   show("guess");
+  /* built after the screen is visible: a hidden track measures zero wide, and
+     the needle would start pinned to the left edge */
+  dial = buildScale($("guess-scale"), {pair: pair(), live: true, value: 50});
 }
 $("guess-done").addEventListener("click", function(){
   var who = G.order[G.at];
