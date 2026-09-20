@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="読み手だけに見える的を、ことばひとつで指す。1台をまわして遊ぶ、電波のいらない推測ゲーム。">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ものさし">
+<meta name="theme-color" content="#eff1f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c1014" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./favicon-32.png" sizes="32x32">
+<style>
+  :root{
+    color-scheme:light dark;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    background:var(--bg);
+  }
+  [hidden]{display:none!important}
+  img{max-width:100%}
+</style>
+
+<!-- shared:start -- everything between the markers also ships as the Artifact;
+     tools/make_artifact.py cuts it back out. Edit it here. -->
+<title>ことばのものさし</title>
+<style>
+/* ---------- tokens : light ---------- */
+:root{
+  --bg:#eff1f4;
+  --panel:#ffffff;
+  --track:#dde2e9;
+  --line:#ccd3dc;
+  --ink:#10161c;
+  --ink-2:#4a5561;
+  --ink-3:#7b8794;
+  --needle:#d4442a;
+  --truth:#12876b;
+  --truth-wash:rgba(18,135,107,.14);
+  --accent:#0f7f86;
+  --accent-ink:#ffffff;
+  --shadow:0 1px 2px rgba(14,20,28,.10), 0 10px 26px rgba(14,20,28,.08);
+  --veil:rgba(239,241,244,.92);
+
+  --font-ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",system-ui,sans-serif;
+  --font-num:ui-rounded,"SF Pro Rounded",-apple-system,"Hiragino Sans",system-ui,sans-serif;
+  --font-data:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+/* ---------- tokens : dark (the default look) ---------- */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c1014;
+    --panel:#161c23;
+    --track:#212a33;
+    --line:#2a343f;
+    --ink:#e9eef4;
+    --ink-2:#98a6b4;
+    --ink-3:#697785;
+    --needle:#ff6b4a;
+    --truth:#4ec9a8;
+    --truth-wash:rgba(78,201,168,.16);
+    --accent:#2fb3a6;
+    --accent-ink:#04211e;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 32px rgba(0,0,0,.38);
+    --veil:rgba(12,16,20,.92);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1014;
+  --panel:#161c23;
+  --track:#212a33;
+  --line:#2a343f;
+  --ink:#e9eef4;
+  --ink-2:#98a6b4;
+  --ink-3:#697785;
+  --needle:#ff6b4a;
+  --truth:#4ec9a8;
+  --truth-wash:rgba(78,201,168,.16);
+  --accent:#2fb3a6;
+  --accent-ink:#04211e;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 32px rgba(0,0,0,.38);
+  --veil:rgba(12,16,20,.92);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;position:relative;
+  background:var(--bg);color:var(--ink);
+  font-family:var(--font-ui);font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;touch-action:manipulation;
+  -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+input{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;padding-inline:16px;overflow:hidden}
+.screen[hidden]{display:none!important}
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+
+.eyebrow{font-family:var(--font-data);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.head{display:flex;align-items:center;gap:10px;padding-block:14px 8px;min-height:52px}
+.head h1{font-size:17px;font-weight:650;margin:0;flex:1}
+.back{width:40px;height:40px;margin-left:-10px;display:grid;place-items:center;color:var(--ink-2);flex:none}
+
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;min-height:54px;padding:0 20px;border-radius:14px;
+  font-weight:600;font-size:17px;
+  background:var(--panel);color:var(--ink);border:1px solid var(--line);
+  transition:transform .12s ease;
+}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;box-shadow:var(--shadow)}
+.btn.player{background:var(--p);color:var(--p-ink);border-color:transparent;box-shadow:var(--shadow)}
+.btn.ghost{background:none;border-color:transparent;color:var(--ink-2);min-height:44px;font-size:15px;font-weight:500}
+.btn.sm{min-height:44px;font-size:15px}
+.btn[disabled]{opacity:.35;pointer-events:none}
+.footer{display:flex;flex-direction:column;gap:8px;padding-block:12px 16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.note{color:var(--ink-3);font-size:13px;line-height:1.55}
+
+/* ---------- the instrument ---------- */
+.scale{display:flex;flex-direction:column;gap:14px;width:100%}
+.poles{display:flex;align-items:flex-start;gap:14px}
+.pole{
+  flex:1;min-width:0;font-size:16px;font-weight:650;line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.pole.l{text-align:left}
+.pole.r{text-align:right}
+.pole .cap{
+  display:block;font-family:var(--font-data);font-size:10px;letter-spacing:.14em;
+  color:var(--ink-3);font-weight:500;margin-bottom:3px;
+}
+
+.track{
+  position:relative;height:112px;border-radius:14px;
+  background:var(--track);border:1px solid var(--line);
+  touch-action:none;overflow:hidden;
+}
+.track.live{cursor:ew-resize}
+.ticks{position:absolute;inset:0;pointer-events:none}
+.ticks i{position:absolute;top:0;width:1px;background:var(--line)}
+.ticks i.mi{height:11px}
+.ticks i.ma{height:20px;background:var(--ink-3);opacity:.5}
+
+/* three stacked bands: they overlap, so the centre reads as the darkest green
+   without needing three separate colours */
+.wedge{position:absolute;top:0;bottom:0;pointer-events:none}
+.wedge b{position:absolute;top:0;bottom:0;display:block;background:var(--truth)}
+.wedge b.b2{opacity:.13}
+.wedge b.b3{opacity:.20}
+.wedge b.b4{opacity:.30}
+.wedge .mid{position:absolute;top:0;bottom:0;width:2px;background:var(--truth);opacity:.85}
+
+.needle{position:absolute;top:0;bottom:0;width:2px;background:var(--needle);pointer-events:none;
+  transition:left .06s linear}
+.needle::after{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:30px;height:30px;border-radius:50%;
+  background:var(--needle);box-shadow:0 2px 10px rgba(0,0,0,.35);
+}
+.needle.ghost{background:var(--p,var(--needle));transition:none}
+.needle.ghost::after{width:17px;height:17px;background:var(--p,var(--needle))}
+/* a pill in the player's own colour: readable over the green bands, which
+   plain text on the wash was not */
+.needle .tag{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:6px;
+  font-size:10px;font-weight:700;white-space:nowrap;
+  color:var(--bg);background:var(--p,var(--needle));
+  padding:1px 7px;border-radius:999px;
+}
+
+.readout{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  font-family:var(--font-data);font-size:11px;letter-spacing:.1em;color:var(--ink-3);
+}
+
+/* ---------- pass ---------- */
+#s-pass{background-color:var(--bg);background-image:linear-gradient(168deg,var(--p-glow) 0%,transparent 62%)}
+.pass-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;min-height:0;padding-block:20px}
+.pass-name{font-family:var(--font-num);font-size:clamp(38px,12vw,56px);font-weight:800;letter-spacing:-.03em;line-height:1.04;color:var(--p);overflow-wrap:anywhere}
+.pass-name em{font-style:normal;font-size:.44em;font-weight:600;color:var(--ink-2);letter-spacing:0}
+.pass-role{border-left:3px solid var(--p);padding-left:12px;display:flex;flex-direction:column;gap:2px}
+.pass-role .lab{font-family:var(--font-data);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.pass-role .val{font-size:16px;font-weight:600;line-height:1.5}
+
+.tally{display:flex;flex-direction:column;gap:7px;border-top:1px solid var(--line);padding-top:12px}
+.tally-row{display:flex;align-items:center;gap:9px;font-size:14px}
+.tally-row .dot{width:9px;height:9px;border-radius:50%;background:var(--p);flex:none}
+.tally-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tally-row .pt{font-family:var(--font-data);font-variant-numeric:tabular-nums;color:var(--ink-2)}
+
+/* ---------- reveal ---------- */
+.result{display:flex;flex-direction:column;gap:10px;padding-block:6px}
+.res-row{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:11px 13px}
+.res-row .dot{width:11px;height:11px;border-radius:50%;background:var(--p);flex:none}
+.res-row .who{flex:1;min-width:0}
+.res-row .who .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res-row .who .sub{font-family:var(--font-data);font-size:12px;color:var(--ink-3)}
+.res-row .pt{font-family:var(--font-num);font-size:22px;font-weight:700}
+.res-row .pt.zero{color:var(--ink-3)}
+.res-row.hit{border-color:var(--truth)}
+
+.clue-box{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:5px;
+}
+.clue-box .lab{font-family:var(--font-data);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.clue-box p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink-2)}
+.clue-box p b{color:var(--ink);font-weight:650}
+
+/* ---------- setup ---------- */
+.seg{display:flex;flex-direction:column;gap:8px;padding-block:2px 14px}
+.seg-b{display:flex;align-items:baseline;gap:12px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:13px 15px;transition:border-color .12s ease}
+.seg-b b{font-size:16px;font-weight:650;flex:none}
+.seg-b small{color:var(--ink-3);font-size:12.5px;line-height:1.4}
+.seg-b[aria-checked="true"]{border-color:var(--accent)}
+.seg-b[aria-checked="true"] b{color:var(--accent)}
+.seg-b[aria-checked="true"] small{color:var(--ink-2)}
+
+.plist{display:flex;flex-direction:column;gap:10px;padding-block:4px}
+.prow{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.prow .dot{width:12px;height:12px;border-radius:50%;background:var(--p);flex:none}
+.prow input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font-size:17px;padding:6px 0}
+.prow input::placeholder{color:var(--ink-3)}
+.prow .del{width:36px;height:36px;display:grid;place-items:center;color:var(--ink-3);flex:none}
+
+/* ---------- home ---------- */
+.home-top{flex:1 0 auto;display:flex;flex-direction:column;justify-content:center;padding-block:20px}
+.wordmark{font-family:var(--font-num);font-size:clamp(40px,13vw,60px);font-weight:800;letter-spacing:-.035em;line-height:1.05;text-wrap:balance}
+.wordmark span{color:var(--needle)}
+.tagline{color:var(--ink-2);margin-top:14px}
+.rules{margin:22px 0 0;border-top:1px solid var(--line);padding-top:15px;display:flex;flex-direction:column;gap:12px}
+.rule{display:flex;gap:14px;align-items:baseline}
+.rule dt{flex:none;width:34px;font-family:var(--font-data);font-size:12px;color:var(--ink-3)}
+.rule dd{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+
+/* ---------- final ---------- */
+.hero{padding-block:18px 10px}
+.hero .ttl{font-family:var(--font-num);font-size:clamp(28px,8.5vw,40px);font-weight:800;letter-spacing:-.03em;line-height:1.08}
+.srow{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px}
+.srow.first{border-color:var(--p)}
+.srow .pos{font-family:var(--font-data);font-size:13px;color:var(--ink-3);width:16px;flex:none}
+.srow .dot{width:11px;height:11px;border-radius:50%;background:var(--p);flex:none}
+.srow .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .pts{font-family:var(--font-num);font-size:21px;font-weight:700}
+.board-list{display:flex;flex-direction:column;gap:8px}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+
+<!-- ============ HOME ============ -->
+<section class="screen" id="s-home">
+  <div class="head">
+    <span class="eyebrow">Pass &amp; Guess</span>
+    <span style="flex:1"></span>
+    <button class="btn ghost sm" id="theme-btn" style="width:auto;padding:0 10px" aria-label="配色を切り替える">◐</button>
+  </div>
+  <div class="scroll">
+    <div class="home-top">
+      <div class="wordmark">ことばの<span>ものさし</span></div>
+      <p class="tagline">読み手だけに見える的を、ことばひとつで指す。<br>電波がなくても遊べる。</p>
+      <dl class="rules" id="rules">
+        <div class="rule"><dt>1</dt><dd>両端にお題が書かれた物差しが出る。読み手だけに、そのどこかの「的」が見える。</dd></div>
+        <div class="rule"><dt>2</dt><dd>読み手は、そこを指すように<b>ことばをひとつ</b>声に出す。端末を渡す。</dd></div>
+        <div class="rule"><dt>3</dt><dd>当て手は的が見えないまま、そのことばの位置まで針を動かす。近いほど高得点。</dd></div>
+      </dl>
+      <div class="tally" id="recap" hidden></div>
+    </div>
+  </div>
+  <div class="footer">
+    <button class="btn primary" id="go-setup">はじめる</button>
+    <button class="btn ghost" id="go-resume" hidden>中断したゲームに戻る</button>
+    <button class="btn ghost" id="go-offline">機内で使う準備</button>
+  </div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section class="screen" id="s-setup" hidden>
+  <div class="head">
+    <button class="back" data-nav="home" aria-label="戻る">←</button>
+    <h1>ゲームの設定</h1>
+  </div>
+  <div class="scroll">
+    <div class="seg" role="radiogroup" aria-label="長さ">
+      <button class="seg-b" id="len-2" role="radio" aria-checked="false"><b>みじかめ</b><small>全員が読み手を2回ずつ</small></button>
+      <button class="seg-b" id="len-3" role="radio" aria-checked="true"><b>ふつう</b><small>全員が読み手を3回ずつ。2人なら6ラウンド</small></button>
+    </div>
+    <div class="plist" id="plist"></div>
+    <button class="btn sm" id="add-player" style="margin-top:10px">＋ 人を増やす</button>
+    <p class="note" style="margin-top:16px">読み手にも、いちばん近かった当て手と同じ点が入る — <b>いいことばを出すほど自分も伸びる</b>。<br><b>2人なら勝ち負けではなく、ふたりでどれだけ噛み合ったかの点数</b>になる。3人以上で順位がつく。</p>
+    <div style="height:10px"></div>
+  </div>
+  <div class="footer">
+    <button class="btn primary" id="start-game">はじめる</button>
+  </div>
+</section>
+
+<!-- ============ PASS ============ -->
+<section class="screen" id="s-pass" hidden>
+  <div class="head"><span class="eyebrow" id="pass-eyebrow"></span></div>
+  <div class="pass-body">
+    <div class="pass-name" id="pass-name"></div>
+    <div class="pass-role">
+      <span class="lab" id="pass-lab"></span>
+      <span class="val" id="pass-val"></span>
+    </div>
+    <div class="tally" id="pass-tally"></div>
+  </div>
+  <div class="footer">
+    <button class="btn player" id="pass-go">見る</button>
+    <p class="note" style="text-align:center;margin:2px 0 0">端末を渡してから押す</p>
+  </div>
+</section>
+
+<!-- ============ READ ============ -->
+<section class="screen" id="s-read" hidden>
+  <div class="head"><span class="eyebrow" id="read-eyebrow"></span></div>
+  <div class="scroll" style="justify-content:center;gap:22px">
+    <div id="read-scale"></div>
+    <div class="clue-box">
+      <span class="lab">読み手</span>
+      <p>緑の帯が<b>的</b>。ここを指すことばを<b>ひとつだけ</b>声に出してから、端末を渡す。</p>
+    </div>
+  </div>
+  <div class="footer">
+    <button class="btn primary" id="read-done">ことばを言った</button>
+  </div>
+</section>
+
+<!-- ============ GUESS ============ -->
+<section class="screen" id="s-guess" hidden>
+  <div class="head"><span class="eyebrow" id="guess-eyebrow"></span></div>
+  <div class="scroll" style="justify-content:center;gap:22px">
+    <div id="guess-scale"></div>
+    <p class="note" id="guess-hint" style="text-align:center">針をことばの位置まで動かす</p>
+  </div>
+  <div class="footer">
+    <button class="btn player" id="guess-done">ここで決定</button>
+  </div>
+</section>
+
+<!-- ============ REVEAL ============ -->
+<section class="screen" id="s-reveal" hidden>
+  <div class="head"><span class="eyebrow" id="rev-eyebrow"></span></div>
+  <div class="scroll" style="gap:18px;justify-content:center">
+    <div id="rev-scale"></div>
+    <div class="result" id="rev-result"></div>
+    <div style="height:6px"></div>
+  </div>
+  <div class="footer">
+    <button class="btn primary" id="rev-next">次へ</button>
+  </div>
+</section>
+
+<!-- ============ FINAL ============ -->
+<section class="screen" id="s-final" hidden>
+  <div class="head"><span class="eyebrow">結果</span></div>
+  <div class="scroll">
+    <div class="hero">
+      <div class="eyebrow" style="margin-bottom:6px" id="fin-lab">Winner</div>
+      <div class="ttl" id="fin-winner"></div>
+    </div>
+    <div class="board-list" id="fin-list"></div>
+    <div style="height:16px"></div>
+  </div>
+  <div class="footer">
+    <button class="btn primary" id="fin-again">同じメンバーでもう1ゲーム</button>
+    <button class="btn ghost" id="fin-members">メンバーを変える</button>
+    <button class="btn ghost" data-nav="home">ホームへ</button>
+  </div>
+</section>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== storage ===================== */
+var K = {prefs:"monosashi.prefs", players:"monosashi.players", game:"monosashi.game", history:"monosashi.history"};
+function load(k,d){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function drop(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+var prefs   = load(K.prefs, {theme:"dark", perPlayer:3});
+var roster  = load(K.players, null);
+var history = load(K.history, []);
+var G       = load(K.game, null);
+
+/* ===================== the scales ===================== */
+/* Each pair is one argument waiting to happen. Left pole first. */
+var SPECTRA = [
+  ["役に立たない","役に立つ"],
+  ["体に悪い","体にいい"],
+  ["安い","高い"],
+  ["よくある","珍しい"],
+  ["過大評価されている","過小評価されている"],
+  ["子ども向け","大人向け"],
+  ["こわくない","こわい"],
+  ["静か","うるさい"],
+  ["地味","派手"],
+  ["軽い","重い"],
+  ["冷たい","熱い"],
+  ["丸い","四角い"],
+  ["やわらかい","かたい"],
+  ["かんたん","むずかしい"],
+  ["おそい","はやい"],
+  ["古い","新しい"],
+  ["ひとりでやる","みんなでやる"],
+  ["田舎っぽい","都会っぽい"],
+  ["平日っぽい","休日っぽい"],
+  ["朝っぽい","夜っぽい"],
+  ["夏っぽい","冬っぽい"],
+  ["和風","洋風"],
+  ["手作り","既製品"],
+  ["人工的","自然"],
+  ["文系","理系"],
+  ["インドア","アウトドア"],
+  ["庶民的","高級"],
+  ["ダサい","おしゃれ"],
+  ["ふざけている","真面目"],
+  ["趣味","仕事"],
+  ["ぜいたく品","必需品"],
+  ["一時の流行","定番"],
+  ["すぐ忘れる","記憶に残る"],
+  ["すぐやめられる","中毒性がある"],
+  ["悪口","褒めことば"],
+  ["プレゼントに向かない","プレゼントに向く"],
+  ["写真映えしない","写真映えする"],
+  ["持ち運べる","持ち運べない"],
+  ["すぐ終わる","時間がかかる"],
+  ["一日で覚えられる","一生かかる"],
+  ["努力","才能"],
+  ["運","実力"],
+  ["痛くない","痛い"],
+  ["あまい","からい"],
+  ["コンビニで買える","コンビニでは買えない"],
+  ["100円","100万円"],
+  ["1分","1年"],
+  ["ひとり用","100人用"],
+  ["役所っぽい","遊園地っぽい"],
+  ["非科学的","科学的"],
+  ["感情的","合理的"],
+  ["慎重","大胆"],
+  ["行き当たりばったり","計画的"],
+  ["内向的","外向的"],
+  ["ルールを破る","ルールを守る"],
+  ["謝らなくていい","謝るべき"],
+  ["許せる","許せない"],
+  ["どうでもいい","大事"],
+  ["言っていい","言っちゃダメ"],
+  ["言いふらす","秘密にする"],
+  ["恥ずかしい","自慢できる"],
+  ["信用できない","信用できる"],
+  ["危険","安全"],
+  ["違法っぽい","合法っぽい"],
+  ["子どもに見せられる","見せられない"],
+  ["職場で話せる","職場では話せない"],
+  ["親に言える","親には言えない"],
+  ["初対面で聞いていい","聞いちゃダメ"],
+  ["デートに向かない","デートに向く"],
+  ["ひとり暮らしに要らない","ひとり暮らしに要る"],
+  ["旅行に持っていかない","持っていく"],
+  ["非常時に役立たない","非常時に役立つ"],
+  ["捨てられる","捨てられない"],
+  ["売れない","売れる"],
+  ["今すぐ欲しい","要らない"],
+  ["年に一度でいい","毎日やりたい"],
+  ["飽きる","飽きない"],
+  ["緊張する","リラックスする"],
+  ["眠くなる","目が覚める"],
+  ["落ち込む","元気が出る"],
+  ["夜ふかし","早起き"],
+  ["猫っぽい","犬っぽい"],
+  ["昭和","令和"],
+  ["アナログ","デジタル"],
+  ["無料であるべき","お金を取っていい"],
+  ["自腹で払う","税金で払う"],
+  ["仕事を増やす","仕事を減らす"],
+  ["人類の役に立っていない","人類の役に立った"],
+  ["100年後には消えている","100年後も残る"],
+  ["必然","偶然"],
+  ["非現実的","現実的"],
+  ["ありえない","ありえる"],
+  ["現実っぽい","SFっぽい"],
+  ["科学っぽい","魔法っぽい"],
+  ["悪役っぽい","主人公っぽい"],
+  ["名脇役","主役"],
+  ["かわいい","かっこいい"],
+  ["まずい","うまい"],
+  ["においが弱い","においが強い"],
+  ["耳ざわりがいい","耳ざわりが悪い"],
+  ["さわり心地がいい","さわり心地が悪い"],
+  ["中身で勝負","見た目で勝負"],
+  ["名前負けしている","名前以上"],
+  ["思ったより安い","思ったより高い"],
+  ["写真のほうがいい","実物のほうがいい"],
+  ["説明しやすい","説明しにくい"],
+  ["一言で言える","一言では言えない"],
+  ["世界中にある","日本にしかない"],
+  ["翻訳できる","翻訳できない"],
+  ["親世代に通じない","親世代にも通じる"],
+  ["海外で通じない","海外でも通じる"],
+  ["ひとりでは無理","ひとりでもできる"],
+  ["練習すればできる","何回やっても無理"],
+  ["見たことがある","見たことがない"],
+  ["家にある","家にはない"],
+  ["おみやげにしない","おみやげにする"],
+  ["朝からは無理","朝でもいける"],
+  ["行列に並ばない","行列に並ぶ"],
+  ["雨の日っぽい","晴れの日っぽい"],
+  ["海っぽい","山っぽい"],
+  ["都市伝説","事実"],
+  ["負けても悔しくない","めちゃくちゃ悔しい"],
+  ["やらないと損","やったら損"]
+];
+
+/* ===================== palette ===================== */
+var COLORS = [
+  {hex:"#38bdf8", ink:"#04212e", glow:"rgba(56,189,248,.22)"},
+  {hex:"#fb7a5c", ink:"#31100a", glow:"rgba(251,122,92,.22)"},
+  {hex:"#4ade80", ink:"#052914", glow:"rgba(74,222,128,.20)"},
+  {hex:"#b18cff", ink:"#1c0b3d", glow:"rgba(177,140,255,.24)"},
+  {hex:"#fbbf4a", ink:"#2c1c00", glow:"rgba(251,191,74,.22)"},
+  {hex:"#f472b6", ink:"#330a20", glow:"rgba(244,114,182,.22)"}
+];
+function paint(el, i){
+  var c = COLORS[i % COLORS.length];
+  el.style.setProperty("--p", c.hex);
+  el.style.setProperty("--p-ink", c.ink);
+  el.style.setProperty("--p-glow", c.glow);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+function $(id){ return document.getElementById(id); }
+
+var SCREENS = ["home","setup","pass","read","guess","reveal","final"];
+var current = "home";
+function show(n){
+  current = n;
+  for (var i=0;i<SCREENS.length;i++){ $("s"+"-"+SCREENS[i]).hidden = SCREENS[i] !== n; }
+  if (n === "home") paintHome();
+}
+function applyTheme(){ document.documentElement.setAttribute("data-theme", prefs.theme === "light" ? "light" : "dark"); }
+$("theme-btn").addEventListener("click", function(){
+  prefs.theme = prefs.theme === "light" ? "dark" : "light";
+  save(K.prefs, prefs); applyTheme();
+});
+
+/* ===================== scoring ===================== */
+/* Four bands, narrowing to a bullseye you will almost never hit on purpose. */
+var BANDS = [[4,4],[9,3],[16,2]];
+function points(guess, target){
+  var d = Math.abs(guess - target);
+  for (var i=0;i<BANDS.length;i++){ if (d <= BANDS[i][0]) return BANDS[i][1]; }
+  return 0;
+}
+
+/* ===================== the instrument ===================== */
+function scaleHTML(){
+  return "<div class=\"scale\">" +
+    "<div class=\"poles\">" +
+      "<span class=\"pole l\"><span class=\"cap\">左</span><span class=\"txt\"></span></span>" +
+      "<span class=\"pole r\"><span class=\"cap\">右</span><span class=\"txt\"></span></span>" +
+    "</div>" +
+    "<div class=\"track\"><div class=\"ticks\"></div></div>" +
+    "<div class=\"readout\"><span></span><span></span></div>" +
+  "</div>";
+}
+function buildScale(host, opt){
+  host.innerHTML = scaleHTML();
+  var poles = host.querySelectorAll(".pole .txt");
+  poles[0].textContent = opt.pair[0];
+  poles[1].textContent = opt.pair[1];
+
+  var track = host.querySelector(".track");
+  var ticks = host.querySelector(".ticks");
+  for (var i=1;i<20;i++){
+    var t = document.createElement("i");
+    t.className = i % 5 === 0 ? "ma" : "mi";
+    t.style.left = (i * 5) + "%";
+    ticks.appendChild(t);
+  }
+
+  if (opt.target !== null && opt.target !== undefined){
+    var w = document.createElement("div");
+    w.className = "wedge";
+    w.style.left = (opt.target - 16) + "%";
+    w.style.width = "32%";
+    w.innerHTML = "<b class=\"b2\" style=\"left:0;right:0\"></b>" +
+                  "<b class=\"b3\" style=\"left:21.875%;right:21.875%\"></b>" +
+                  "<b class=\"b4\" style=\"left:37.5%;right:37.5%\"></b>" +
+                  "<span class=\"mid\" style=\"left:calc(50% - 1px)\"></span>";
+    track.appendChild(w);
+  }
+
+  (opt.marks || []).forEach(function(m){
+    var n = document.createElement("div");
+    n.className = "needle ghost";
+    n.style.left = "calc(" + m.at + "% - 1px)";
+    if (m.color !== undefined) paint(n, m.color);
+    if (m.tag) n.innerHTML = "<span class=\"tag\">" + esc(m.tag) + "</span>";
+    track.appendChild(n);
+  });
+
+  var api = {value: opt.value};
+  if (opt.live){
+    track.classList.add("live");
+    var nd = document.createElement("div");
+    nd.className = "needle";
+    track.appendChild(nd);
+
+    function put(v){
+      api.value = Math.max(0, Math.min(100, v));
+      nd.style.left = "calc(" + api.value + "% - 1px)";
+      var ro = host.querySelectorAll(".readout span");
+      ro[0].textContent = "左から " + Math.round(api.value);
+      ro[1].textContent = "右から " + Math.round(100 - api.value);
+    }
+    function fromX(x){
+      var r = track.getBoundingClientRect();
+      put(((x - r.left) / r.width) * 100);
+    }
+    var dragging = false;
+    track.addEventListener("pointerdown", function(e){
+      dragging = true;
+      try{ track.setPointerCapture(e.pointerId); }catch(err){}
+      fromX(e.clientX);
+    });
+    track.addEventListener("pointermove", function(e){ if (dragging) fromX(e.clientX); });
+    track.addEventListener("pointerup", function(){ dragging = false; });
+    track.addEventListener("pointercancel", function(){ dragging = false; });
+    track.setAttribute("tabindex", "0");
+    track.setAttribute("role", "slider");
+    track.setAttribute("aria-label", opt.pair[0] + " から " + opt.pair[1]);
+    track.addEventListener("keydown", function(e){
+      var step = e.shiftKey ? 5 : 1;
+      if (e.key === "ArrowLeft"){ put(api.value - step); e.preventDefault(); }
+      if (e.key === "ArrowRight"){ put(api.value + step); e.preventDefault(); }
+    });
+    put(opt.value === undefined ? 50 : opt.value);
+  } else {
+    var ro2 = host.querySelectorAll(".readout span");
+    ro2[0].textContent = opt.footL || "";
+    ro2[1].textContent = opt.footR || "";
+  }
+  return api;
+}
+
+/* ===================== game state ===================== */
+function shuffled(n, rnd){
+  var a = [];
+  for (var i=0;i<n;i++) a.push(i);
+  for (var j=a.length-1;j>0;j--){
+    var k = Math.floor(rnd() * (j+1)), t = a[j];
+    a[j] = a[k]; a[k] = t;
+  }
+  return a;
+}
+function newGame(players, perPlayer){
+  var rnd = Math.random;
+  return {
+    players: players,
+    totals: players.map(function(){ return 0; }),
+    perPlayer: perPlayer,
+    rounds: players.length * perPlayer,
+    round: 0,
+    deck: shuffled(SPECTRA.length, rnd),
+    reader: 0,
+    target: null,
+    order: [],      /* who still has to guess this round */
+    at: 0,
+    guesses: [],
+    readDone: false,
+    stage: "pass"   /* pass | read | guess | reveal */
+  };
+}
+function persist(){ if (G) save(K.game, G); else drop(K.game); }
+function pair(){ return SPECTRA[G.deck[G.round % G.deck.length]]; }
+
+function beginRound(){
+  G.reader = G.round % G.players.length;
+  /* The widest scoring band reaches 16 either side, so keeping the centre
+     inside [16,84] means the whole target always fits on the track - no band
+     running off the edge, and no guess that is impossible to make. */
+  G.target = 16 + Math.random() * 68;
+  G.order = [];
+  for (var i=0;i<G.players.length;i++){ if (i !== G.reader) G.order.push(i); }
+  G.at = 0;
+  G.guesses = [];
+  G.readDone = false;
+  G.stage = "pass";
+  persist();
+  toPass();
+}
+
+/* At two players the reader always mirrors the only guesser, so the totals can
+   never diverge - it is a co-op score, and pretending otherwise would declare
+   a draw every single game. Three or more guess independently and do rank. */
+function isCoop(){ return G.players.length === 2; }
+function rating(pt, max){
+  var r = max ? pt / max : 0;
+  if (r >= 0.92) return "ほぼテレパシー";
+  if (r >= 0.75) return "よく噛み合っている";
+  if (r >= 0.55) return "まずまず通じている";
+  if (r >= 0.35) return "すれ違い気味";
+  return "初対面みたいな噛み合わなさ";
+}
+
+function tallyHTML(){
+  if (isCoop()){
+    return "<div class=\"tally-row\" style=\"--p:var(--truth)\">" +
+      "<span class=\"dot\"></span><span class=\"nm\">ふたりの合計</span>" +
+      "<span class=\"pt\">" + G.totals[0] + " / " + (G.round * 4) + "</span></div>";
+  }
+  var rows = G.players.map(function(p, i){ return {i:i, name:p, pt:G.totals[i]}; });
+  rows.sort(function(a,b){ return b.pt - a.pt; });
+  var h = "";
+  for (var k=0;k<rows.length;k++){
+    h += "<div class=\"tally-row\" style=\"--p:" + COLORS[rows[k].i % COLORS.length].hex + "\">" +
+      "<span class=\"dot\"></span><span class=\"nm\">" + esc(rows[k].name) + "</span>" +
+      "<span class=\"pt\">" + rows[k].pt + "</span></div>";
+  }
+  return h;
+}
+
+function toPass(){
+  /* one rule decides whose hands the device should be in: has the reader
+     spoken yet? */
+  var isReader = !G.readDone;
+  var who = isReader ? G.reader : G.order[G.at];
+
+  paint($("s-pass"), who);
+  $("pass-eyebrow").textContent = "Round " + (G.round + 1) + " / " + G.rounds;
+  $("pass-name").innerHTML = "";
+  $("pass-name").appendChild(document.createTextNode(G.players[who]));
+  var em = document.createElement("em");
+  em.textContent = isReader ? " が読み手" : " が当てる";
+  $("pass-name").appendChild(em);
+
+  $("pass-lab").textContent = isReader ? "やること" : "やること";
+  $("pass-val").textContent = isReader
+    ? "的を見て、そこを指すことばをひとつ言う"
+    : "聞いたことばの位置まで針を動かす";
+  $("pass-go").textContent = isReader ? "的を見る" : "物差しを見る";
+  $("pass-tally").innerHTML = G.round > 0 ? tallyHTML() : "";
+  show("pass");
+}
+
+$("pass-go").addEventListener("click", function(){
+  if (!G.readDone){ toRead(); } else { toGuess(); }
+});
+
+function toRead(){
+  $("read-eyebrow").textContent = "Round " + (G.round + 1) + " · " + G.players[G.reader] + " が読み手";
+  buildScale($("read-scale"), {pair: pair(), target: G.target, footL: "緑の帯が的", footR: "真ん中ほど高得点"});
+  G.stage = "read";
+  persist();
+  show("read");
+}
+$("read-done").addEventListener("click", function(){
+  G.readDone = true;
+  G.stage = "pass";
+  persist();
+  toPass();
+});
+
+var dial = null;
+function toGuess(){
+  var who = G.order[G.at];
+  paint($("s-guess"), who);
+  $("guess-eyebrow").textContent = "Round " + (G.round + 1) + " · " + G.players[who] + " が当てる";
+  $("guess-hint").textContent = G.order.length > 1
+    ? "針をことばの位置まで動かす（" + (G.at + 1) + " / " + G.order.length + "人目）"
+    : "針をことばの位置まで動かす";
+  dial = buildScale($("guess-scale"), {pair: pair(), live: true, value: 50});
+  G.stage = "guess";
+  persist();
+  show("guess");
+}
+$("guess-done").addEventListener("click", function(){
+  var who = G.order[G.at];
+  G.guesses.push({who: who, at: dial.value});
+  G.at++;
+  if (G.at < G.order.length){ G.stage = "pass"; persist(); toPass(); }
+  else { toReveal(); }
+});
+
+function toReveal(){
+  var best = 0;
+  var many = G.guesses.length > 1;   /* with one needle the label says nothing */
+  var marks = G.guesses.map(function(g){
+    var p = points(g.at, G.target);
+    if (p > best) best = p;
+    return {at: g.at, color: g.who, tag: many ? G.players[g.who] : ""};
+  });
+  G.guesses.forEach(function(g){ G.totals[g.who] += points(g.at, G.target); });
+  G.totals[G.reader] += best;      /* a good clue pays the reader too */
+
+  $("rev-eyebrow").textContent = "Round " + (G.round + 1) + " / " + G.rounds + " · 結果";
+  buildScale($("rev-scale"), {pair: pair(), target: G.target, marks: marks,
+    footL: "的は 左から " + Math.round(G.target), footR: ""});
+
+  var h = "";
+  G.guesses.forEach(function(g){
+    var p = points(g.at, G.target);
+    h += "<div class=\"res-row" + (p === 4 ? " hit" : "") + "\" style=\"--p:" + COLORS[g.who % COLORS.length].hex + "\">" +
+      "<span class=\"dot\"></span><span class=\"who\"><span class=\"nm\">" + esc(G.players[g.who]) + "</span>" +
+      "<span class=\"sub\">ずれ " + Math.round(Math.abs(g.at - G.target)) + "</span></span>" +
+      "<span class=\"pt" + (p ? "" : " zero") + "\">+" + p + "</span></div>";
+  });
+  h += "<div class=\"res-row\" style=\"--p:" + COLORS[G.reader % COLORS.length].hex + "\">" +
+    "<span class=\"dot\"></span><span class=\"who\"><span class=\"nm\">" + esc(G.players[G.reader]) + "</span>" +
+    "<span class=\"sub\">読み手 · いちばん近かった人と同点</span></span>" +
+    "<span class=\"pt" + (best ? "" : " zero") + "\">+" + best + "</span></div>";
+  $("rev-result").innerHTML = h;
+
+  G.stage = "reveal";
+  persist();
+  show("reveal");
+}
+$("rev-next").addEventListener("click", function(){
+  G.round++;
+  G.readDone = false;
+  if (G.round >= G.rounds){ finish(); } else { beginRound(); }
+});
+
+function finish(){
+  var max = G.rounds * 4;
+  var coop = isCoop();
+  var rows = G.players.map(function(p,i){ return {name:p, color:i, pt:G.totals[i]}; });
+  rows.sort(function(a,b){ return b.pt - a.pt; });
+
+  history.unshift({ts: Date.now(), rounds: G.rounds, coop: coop,
+                   team: G.totals[0], max: max, results: rows});
+  history = history.slice(0, 20);
+  save(K.history, history);
+
+  var h = "";
+  if (coop){
+    paint($("s-final"), 0);
+    $("s-final").style.setProperty("--p", "var(--truth)");
+    $("fin-lab").textContent = "ふたりの合計";
+    $("fin-winner").textContent = rating(G.totals[0], max);
+    h = "<div class=\"srow first\" style=\"--p:var(--truth)\">" +
+        "<span class=\"dot\"></span><span class=\"nm\">" +
+        esc(G.players[0]) + " と " + esc(G.players[1]) + "</span>" +
+        "<span class=\"pts\">" + G.totals[0] + " / " + max + "</span></div>" +
+        "<p class=\"note\" style=\"margin:6px 2px 0\">2人だと読み手にも当て手と同じ点が入るので、勝ち負けではなく<b>どれだけ噛み合ったか</b>の点数になる。3人以上なら順位がつく。</p>";
+  } else {
+    var tie = rows[0].pt === rows[1].pt;
+    paint($("s-final"), rows[0].color);
+    $("fin-lab").textContent = tie ? "Draw" : "Winner";
+    $("fin-winner").textContent = tie ? "引き分け" : rows[0].name;
+    for (var i=0;i<rows.length;i++){
+      h += "<div class=\"srow" + (i === 0 && !tie ? " first" : "") + "\" style=\"--p:" + COLORS[rows[i].color % COLORS.length].hex + "\">" +
+        "<span class=\"pos\">" + (i+1) + "</span><span class=\"dot\"></span>" +
+        "<span class=\"nm\">" + esc(rows[i].name) + "</span>" +
+        "<span class=\"pts\">" + rows[i].pt + "</span></div>";
+    }
+    h += "<p class=\"note\" style=\"margin:6px 2px 0\">満点は1人 " + max + " 点。</p>";
+  }
+  $("fin-list").innerHTML = h;
+
+  G = null; persist();
+  show("final");
+}
+
+/* ===================== home ===================== */
+function paintHome(){
+  var box = $("recap");
+  $("rules").hidden = history.length > 0;
+  if (!history.length){ box.hidden = true; }
+  else {
+    box.hidden = false;
+    var last = history[0];
+    var h = "<div class=\"eyebrow\" style=\"margin-bottom:2px\">前回</div>";
+    if (last.coop){
+      h += "<div class=\"tally-row\" style=\"--p:var(--truth)\">" +
+        "<span class=\"dot\"></span><span class=\"nm\">" +
+        esc(last.results.map(function(r){ return r.name; }).join(" と ")) + "</span>" +
+        "<span class=\"pt\">" + last.team + " / " + last.max + "</span></div>";
+    } else {
+      last.results.forEach(function(r){
+        h += "<div class=\"tally-row\" style=\"--p:" + COLORS[r.color % COLORS.length].hex + "\">" +
+          "<span class=\"dot\"></span><span class=\"nm\">" + esc(r.name) + "</span>" +
+          "<span class=\"pt\">" + r.pt + "</span></div>";
+      });
+    }
+    box.innerHTML = h;
+  }
+  $("go-resume").hidden = !(G && G.round < G.rounds);
+}
+
+/* ===================== setup ===================== */
+var draft = [];
+function paintSetup(){
+  var list = $("plist");
+  list.innerHTML = "";
+  draft.forEach(function(_, i){
+    var row = document.createElement("div");
+    row.className = "prow";
+    paint(row, i);
+    row.innerHTML = "<span class=\"dot\"></span>" +
+      "<input id=\"p" + i + "\" type=\"text\" maxlength=\"10\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" placeholder=\"プレイヤー " + (i+1) + "\">" +
+      (draft.length > 2 ? "<button class=\"del\" aria-label=\"削除\">×</button>" : "");
+    var inp = row.querySelector("input");
+    inp.value = draft[i];
+    inp.addEventListener("input", function(){ draft[i] = inp.value; });
+    var del = row.querySelector(".del");
+    if (del) del.addEventListener("click", function(){ draft.splice(i,1); paintSetup(); });
+    list.appendChild(row);
+  });
+  $("add-player").hidden = draft.length >= 6;
+  $("len-2").setAttribute("aria-checked", prefs.perPlayer === 2 ? "true" : "false");
+  $("len-3").setAttribute("aria-checked", prefs.perPlayer === 2 ? "false" : "true");
+}
+function pickLen(n){ prefs.perPlayer = n; save(K.prefs, prefs); paintSetup(); }
+$("len-2").addEventListener("click", function(){ pickLen(2); });
+$("len-3").addEventListener("click", function(){ pickLen(3); });
+$("add-player").addEventListener("click", function(){ if (draft.length < 6){ draft.push(""); paintSetup(); } });
+
+$("go-setup").addEventListener("click", function(){
+  draft = roster && roster.length >= 2 ? roster.slice() : ["",""];
+  paintSetup();
+  show("setup");
+});
+$("start-game").addEventListener("click", function(){
+  var players = draft.map(function(n, i){ return (n || "").trim() || ("プレイヤー " + (i+1)); });
+  roster = players.slice();
+  save(K.players, roster);
+  G = newGame(players, prefs.perPlayer === 2 ? 2 : 3);
+  G.readDone = false;
+  beginRound();
+});
+$("go-resume").addEventListener("click", function(){
+  if (G.stage === "read") toRead();
+  else if (G.stage === "guess") toGuess();
+  else if (G.stage === "reveal") toReveal();
+  else toPass();
+});
+$("fin-again").addEventListener("click", function(){
+  G = newGame(roster.slice(), prefs.perPlayer === 2 ? 2 : 3);
+  G.readDone = false;
+  beginRound();
+});
+$("fin-members").addEventListener("click", function(){
+  draft = roster ? roster.slice() : ["",""];
+  paintSetup();
+  show("setup");
+});
+document.addEventListener("click", function(e){
+  var b = e.target.closest("[data-nav]");
+  if (b) show(b.dataset.nav);
+});
+
+/* ===================== offline sheet ===================== */
+$("go-offline").addEventListener("click", function(){
+  var v = document.createElement("div");
+  v.style.cssText = "position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:flex-end;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--veil);overflow-y:auto";
+  v.innerHTML = "<div style=\"background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;margin-top:auto\">" +
+    "<h2 style=\"margin:0;font-size:22px;font-weight:700\">機内で使う準備</h2>" +
+    "<p class=\"note\" style=\"margin:0\"><b>1.</b> Safariの共有ボタンから「ホーム画面に追加」<br>" +
+    "<b>2.</b> 追加したアイコンから一度起動する<br>" +
+    "<b>3.</b> 搭乗前に機内モードONで、もう一度起動できるか確認</p>" +
+    "<p class=\"note\" style=\"margin:0\">ここまで確認できて初めて安心していい。得点はこの端末の中にだけ残る。</p>" +
+    "<button class=\"btn primary\" data-close=\"1\">わかった</button></div>";
+  $("s-" + current).appendChild(v);
+  v.addEventListener("click", function(e){ if (e.target.closest("[data-close]")) v.remove(); });
+});
+
+/* ===================== boot ===================== */
+applyTheme();
+if (G && !(G.players && G.round < G.rounds)){ G = null; persist(); }
+show("home");
+})();
+</script>
+<!-- shared:end -->
+
+<script>
+/* Without this the game is just a web page: the worker is what puts it on the
+   device. A failed registration is not fatal - the page still plays online. */
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("./sw.js").catch(function(){});
+  });
+}
+</script>
+</html>
